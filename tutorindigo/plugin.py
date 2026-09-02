@@ -6,7 +6,7 @@ import typing as t
 
 import importlib_resources
 from tutor import hooks
-from tutormfe.hooks import PLUGIN_SLOTS
+from tutormfe.hooks import MFE_APPS, PLUGIN_SLOTS
 from tutor.__about__ import __version_suffix__
 
 from .__about__ import __version__
@@ -36,6 +36,20 @@ config: t.Dict[str, t.Dict[str, t.Any]] = {
             {"title": "Help", "url": "/help"},
             {"title": "Contact Us", "url": "/contact"},
         ],
+        # --- Self-registration ("autoregistro") reCAPTCHA ---
+        # Google reCAPTCHA v2 "I'm not a robot" checkbox keys. Set both via
+        #   tutor config save --set INDIGO_RECAPTCHA_SITE_KEY=... --set INDIGO_RECAPTCHA_SECRET_KEY=...
+        # Leaving them blank + ENABLE_REGISTRATION_RECAPTCHA=false keeps registration unchanged.
+        "RECAPTCHA_SITE_KEY": "",
+        "RECAPTCHA_SECRET_KEY": "",
+        "ENABLE_REGISTRATION_RECAPTCHA": True,
+        # Only relevant if you switch the keys to reCAPTCHA v3 (score based). Keep null for v2.
+        "RECAPTCHA_MIN_SCORE": None,
+        # pip requirement baked into the openedx image; pin to a tag for reproducible builds.
+        "REGISTRATION_CAPTCHA_PACKAGE": (
+            "git+https://github.com/Epp-Seguridad-Industrial-S-A-S/"
+            "epp-registration-captcha.git@v0.1.0"
+        ),
     },
     "unique": {},
     "overrides": {},
@@ -137,6 +151,35 @@ hooks.Filters.ENV_PATCHES.add_item(
     )
 )
 
+
+# Build the authn (logistration) MFE from the EPP fork instead of upstream. The fork adds
+# the Google reCAPTCHA widget to the registration form; the token is verified server-side
+# by the epp-registration-captcha package (see the openedx settings patches below).
+EPP_AUTHN_MFE_REPOSITORY = (
+    "https://github.com/Epp-Seguridad-Industrial-S-A-S/frontend-app-authn.git"
+)
+EPP_AUTHN_MFE_VERSION = "epp/recaptcha-sumac"  # branched off open-release/sumac.master
+
+
+@MFE_APPS.add()
+def _epp_override_authn_mfe(mfes: dict) -> dict:
+    mfes["authn"] = {
+        "repository": EPP_AUTHN_MFE_REPOSITORY,
+        "port": 1999,  # authn's port in tutor-mfe CORE_MFE_APPS
+        "version": EPP_AUTHN_MFE_VERSION,
+    }
+    return mfes
+
+
+# Install the server-side reCAPTCHA verifier (registration extension form) into the
+# openedx image. One patch covers the production and development image stages.
+hooks.Filters.ENV_PATCHES.add_item(
+    (
+        "openedx-dockerfile-post-python-requirements",
+        "RUN pip install '{{ INDIGO_REGISTRATION_CAPTCHA_PACKAGE }}'",
+    )
+)
+
 hooks.Filters.ENV_PATCHES.add_item(
     (
         "mfe-dockerfile-post-npm-install-authoring",
@@ -172,12 +215,30 @@ for filename in javascript_files:
         PIPELINE['JAVASCRIPT'][filename]['source_filenames'] += dark_theme_filepath
 
 MFE_CONFIG['INDIGO_ENABLE_DARK_TOGGLE'] = {{ INDIGO_ENABLE_DARK_TOGGLE }}
+
+# Self-registration reCAPTCHA (verified server-side by epp-registration-captcha)
+REGISTRATION_EXTENSION_FORM = "epp_registration_captcha.forms.RegistrationCaptchaForm"
+EPP_ENABLE_REGISTRATION_RECAPTCHA = {{ INDIGO_ENABLE_REGISTRATION_RECAPTCHA }}
+RECAPTCHA_PUBLIC_KEY = "{{ INDIGO_RECAPTCHA_SITE_KEY }}"
+RECAPTCHA_PRIVATE_KEY = "{{ INDIGO_RECAPTCHA_SECRET_KEY }}"
+{% if INDIGO_RECAPTCHA_MIN_SCORE is not none %}RECAPTCHA_MIN_SCORE = {{ INDIGO_RECAPTCHA_MIN_SCORE }}{% endif %}
+MFE_CONFIG['RECAPTCHA_PUBLIC_KEY'] = "{{ INDIGO_RECAPTCHA_SITE_KEY }}"
+MFE_CONFIG['ENABLE_REGISTRATION_RECAPTCHA'] = {{ INDIGO_ENABLE_REGISTRATION_RECAPTCHA }}
 """,
         ),
         (
             "openedx-lms-production-settings",
             """
 MFE_CONFIG['INDIGO_ENABLE_DARK_TOGGLE'] = {{ INDIGO_ENABLE_DARK_TOGGLE }}
+
+# Self-registration reCAPTCHA (verified server-side by epp-registration-captcha)
+REGISTRATION_EXTENSION_FORM = "epp_registration_captcha.forms.RegistrationCaptchaForm"
+EPP_ENABLE_REGISTRATION_RECAPTCHA = {{ INDIGO_ENABLE_REGISTRATION_RECAPTCHA }}
+RECAPTCHA_PUBLIC_KEY = "{{ INDIGO_RECAPTCHA_SITE_KEY }}"
+RECAPTCHA_PRIVATE_KEY = "{{ INDIGO_RECAPTCHA_SECRET_KEY }}"
+{% if INDIGO_RECAPTCHA_MIN_SCORE is not none %}RECAPTCHA_MIN_SCORE = {{ INDIGO_RECAPTCHA_MIN_SCORE }}{% endif %}
+MFE_CONFIG['RECAPTCHA_PUBLIC_KEY'] = "{{ INDIGO_RECAPTCHA_SITE_KEY }}"
+MFE_CONFIG['ENABLE_REGISTRATION_RECAPTCHA'] = {{ INDIGO_ENABLE_REGISTRATION_RECAPTCHA }}
 """,
         ),
     ]
