@@ -48,8 +48,14 @@ config: t.Dict[str, t.Dict[str, t.Any]] = {
         # pip requirement baked into the openedx image; pin to a tag for reproducible builds.
         "REGISTRATION_CAPTCHA_PACKAGE": (
             "git+https://github.com/Epp-Seguridad-Industrial-S-A-S/"
-            "epp-registration-captcha.git@v0.1.1"
+            "epp-registration-captcha.git@v0.2.0"
         ),
+        # "Confirm email" double-entry field on the registration form (catches values
+        # that don't match; does NOT check the domain -- see ENABLE_EMAIL_DOMAIN_CHECK).
+        "REQUIRE_CONFIRM_EMAIL": True,
+        # Reject registration if the email's domain has no MX/A record (fails open on
+        # DNS errors -- see epp_registration_captcha.forms.domain_can_receive_mail).
+        "ENABLE_EMAIL_DOMAIN_CHECK": True,
     },
     "unique": {},
     "overrides": {},
@@ -224,6 +230,14 @@ RECAPTCHA_PRIVATE_KEY = "{{ INDIGO_RECAPTCHA_SECRET_KEY }}"
 {% if INDIGO_RECAPTCHA_MIN_SCORE is not none %}RECAPTCHA_MIN_SCORE = {{ INDIGO_RECAPTCHA_MIN_SCORE }}{% endif %}
 MFE_CONFIG['RECAPTCHA_PUBLIC_KEY'] = "{{ INDIGO_RECAPTCHA_SITE_KEY }}"
 MFE_CONFIG['ENABLE_REGISTRATION_RECAPTCHA'] = {{ INDIGO_ENABLE_REGISTRATION_RECAPTCHA }}
+
+# Reject registrations whose email domain has no MX/A record (fails open on DNS errors)
+EPP_ENABLE_EMAIL_DOMAIN_CHECK = {{ INDIGO_ENABLE_EMAIL_DOMAIN_CHECK }}
+
+# "Confirm email" field on the registration form (catches values that don't match)
+REGISTRATION_EXTRA_FIELDS = REGISTRATION_EXTRA_FIELDS if "REGISTRATION_EXTRA_FIELDS" in dir() else {}
+REGISTRATION_EXTRA_FIELDS["confirm_email"] = "{{ 'required' if INDIGO_REQUIRE_CONFIRM_EMAIL else 'hidden' }}"
+MFE_CONFIG['ENABLE_DYNAMIC_REGISTRATION_FIELDS'] = {{ INDIGO_REQUIRE_CONFIRM_EMAIL }}
 """,
         ),
         (
@@ -239,6 +253,14 @@ RECAPTCHA_PRIVATE_KEY = "{{ INDIGO_RECAPTCHA_SECRET_KEY }}"
 {% if INDIGO_RECAPTCHA_MIN_SCORE is not none %}RECAPTCHA_MIN_SCORE = {{ INDIGO_RECAPTCHA_MIN_SCORE }}{% endif %}
 MFE_CONFIG['RECAPTCHA_PUBLIC_KEY'] = "{{ INDIGO_RECAPTCHA_SITE_KEY }}"
 MFE_CONFIG['ENABLE_REGISTRATION_RECAPTCHA'] = {{ INDIGO_ENABLE_REGISTRATION_RECAPTCHA }}
+
+# Reject registrations whose email domain has no MX/A record (fails open on DNS errors)
+EPP_ENABLE_EMAIL_DOMAIN_CHECK = {{ INDIGO_ENABLE_EMAIL_DOMAIN_CHECK }}
+
+# "Confirm email" field on the registration form (catches values that don't match)
+REGISTRATION_EXTRA_FIELDS = REGISTRATION_EXTRA_FIELDS if "REGISTRATION_EXTRA_FIELDS" in dir() else {}
+REGISTRATION_EXTRA_FIELDS["confirm_email"] = "{{ 'required' if INDIGO_REQUIRE_CONFIRM_EMAIL else 'hidden' }}"
+MFE_CONFIG['ENABLE_DYNAMIC_REGISTRATION_FIELDS'] = {{ INDIGO_REQUIRE_CONFIRM_EMAIL }}
 """,
         ),
     ]
