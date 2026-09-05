@@ -164,12 +164,20 @@ for filename in javascript_files:
     if filename in PIPELINE['JAVASCRIPT']:
         PIPELINE['JAVASCRIPT'][filename]['source_filenames'] += dark_theme_filepath
 
+# Default site language (Spanish, Latin America). Anonymous visitors without an
+# explicit language cookie/browser preference get this instead of falling back to en.
+LANGUAGE_CODE = "es-419"
+
 MFE_CONFIG['INDIGO_ENABLE_DARK_TOGGLE'] = {{ INDIGO_ENABLE_DARK_TOGGLE }}
 """,
         ),
         (
             "openedx-lms-production-settings",
             """
+# Default site language (Spanish, Latin America). Anonymous visitors without an
+# explicit language cookie/browser preference get this instead of falling back to en.
+LANGUAGE_CODE = "es-419"
+
 MFE_CONFIG['INDIGO_ENABLE_DARK_TOGGLE'] = {{ INDIGO_ENABLE_DARK_TOGGLE }}
 """,
         ),
