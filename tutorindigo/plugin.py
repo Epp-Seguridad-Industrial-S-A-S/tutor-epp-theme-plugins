@@ -52,7 +52,8 @@ config: t.Dict[str, t.Dict[str, t.Any]] = {
         ),
         # "Confirm email" double-entry field on the registration form (catches values
         # that don't match; does NOT check the domain -- see ENABLE_EMAIL_DOMAIN_CHECK).
-        "REQUIRE_CONFIRM_EMAIL": True,
+        # Rendered/enforced entirely by the authn fork; this only feeds MFE_CONFIG.
+        "ENABLE_CONFIRM_EMAIL": True,
         # Reject registration if the email's domain has no MX/A record (fails open on
         # DNS errors -- see epp_registration_captcha.forms.domain_can_receive_mail).
         "ENABLE_EMAIL_DOMAIN_CHECK": True,
@@ -234,13 +235,11 @@ MFE_CONFIG['ENABLE_REGISTRATION_RECAPTCHA'] = {{ INDIGO_ENABLE_REGISTRATION_RECA
 # Reject registrations whose email domain has no MX/A record (fails open on DNS errors)
 EPP_ENABLE_EMAIL_DOMAIN_CHECK = {{ INDIGO_ENABLE_EMAIL_DOMAIN_CHECK }}
 
-# "Confirm email" field on the registration form (catches values that don't match).
-# Needs BOTH the Django setting (so /api/mfe_context returns the extra fields) and the
-# MFE_CONFIG flag (so the authn MFE renders them).
-REGISTRATION_EXTRA_FIELDS = REGISTRATION_EXTRA_FIELDS if "REGISTRATION_EXTRA_FIELDS" in dir() else {}
-REGISTRATION_EXTRA_FIELDS["confirm_email"] = "{{ 'required' if INDIGO_REQUIRE_CONFIRM_EMAIL else 'hidden' }}"
-ENABLE_DYNAMIC_REGISTRATION_FIELDS = {{ INDIGO_REQUIRE_CONFIRM_EMAIL }}
-MFE_CONFIG['ENABLE_DYNAMIC_REGISTRATION_FIELDS'] = {{ INDIGO_REQUIRE_CONFIRM_EMAIL }}
+# "Confirm email" second input on the registration form. The authn fork renders and
+# enforces it entirely on the frontend (REGISTRATION_EXTRA_FIELDS can't carry confirm_email
+# to the MFE -- RegistrationFieldsContext drops non-persisted fields), so this is the only
+# wiring needed.
+MFE_CONFIG['EPP_ENABLE_CONFIRM_EMAIL'] = {{ INDIGO_ENABLE_CONFIRM_EMAIL }}
 """,
         ),
         (
@@ -260,13 +259,11 @@ MFE_CONFIG['ENABLE_REGISTRATION_RECAPTCHA'] = {{ INDIGO_ENABLE_REGISTRATION_RECA
 # Reject registrations whose email domain has no MX/A record (fails open on DNS errors)
 EPP_ENABLE_EMAIL_DOMAIN_CHECK = {{ INDIGO_ENABLE_EMAIL_DOMAIN_CHECK }}
 
-# "Confirm email" field on the registration form (catches values that don't match).
-# Needs BOTH the Django setting (so /api/mfe_context returns the extra fields) and the
-# MFE_CONFIG flag (so the authn MFE renders them).
-REGISTRATION_EXTRA_FIELDS = REGISTRATION_EXTRA_FIELDS if "REGISTRATION_EXTRA_FIELDS" in dir() else {}
-REGISTRATION_EXTRA_FIELDS["confirm_email"] = "{{ 'required' if INDIGO_REQUIRE_CONFIRM_EMAIL else 'hidden' }}"
-ENABLE_DYNAMIC_REGISTRATION_FIELDS = {{ INDIGO_REQUIRE_CONFIRM_EMAIL }}
-MFE_CONFIG['ENABLE_DYNAMIC_REGISTRATION_FIELDS'] = {{ INDIGO_REQUIRE_CONFIRM_EMAIL }}
+# "Confirm email" second input on the registration form. The authn fork renders and
+# enforces it entirely on the frontend (REGISTRATION_EXTRA_FIELDS can't carry confirm_email
+# to the MFE -- RegistrationFieldsContext drops non-persisted fields), so this is the only
+# wiring needed.
+MFE_CONFIG['EPP_ENABLE_CONFIRM_EMAIL'] = {{ INDIGO_ENABLE_CONFIRM_EMAIL }}
 """,
         ),
     ]
