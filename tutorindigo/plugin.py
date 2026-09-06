@@ -48,7 +48,7 @@ config: t.Dict[str, t.Dict[str, t.Any]] = {
         # pip requirement baked into the openedx image; pin to a tag for reproducible builds.
         "REGISTRATION_CAPTCHA_PACKAGE": (
             "git+https://github.com/Epp-Seguridad-Industrial-S-A-S/"
-            "epp-registration-captcha.git@v0.2.0"
+            "epp-registration-captcha.git@v0.2.1"
         ),
         # "Confirm email" double-entry field on the registration form (catches values
         # that don't match; does NOT check the domain -- see ENABLE_EMAIL_DOMAIN_CHECK).
