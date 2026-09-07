@@ -57,6 +57,14 @@ config: t.Dict[str, t.Dict[str, t.Any]] = {
         # Reject registration if the email's domain has no MX/A record (fails open on
         # DNS errors -- see epp_registration_captcha.forms.domain_can_receive_mail).
         "ENABLE_EMAIL_DOMAIN_CHECK": True,
+        # pk of the Site that ACE transactional emails resolve against. The activation
+        # email is rendered in a Celery worker with no request, so it uses
+        # Site.objects.get_current() == the Site at settings.SITE_ID to build homepage_url
+        # / dashboard_url. That Site must be the one whose domain == LMS_HOST; on this
+        # deployment it is pk=3 (pk=2 stayed as Django's default 'example.com', which is
+        # what leaked "https://example.com/" links into the activation email). Set to null
+        # to leave Tutor's default SITE_ID untouched.
+        "SITE_ID": 3,
     },
     "unique": {},
     "overrides": {},
@@ -240,6 +248,12 @@ EPP_ENABLE_EMAIL_DOMAIN_CHECK = {{ INDIGO_ENABLE_EMAIL_DOMAIN_CHECK }}
 # to the MFE -- RegistrationFieldsContext drops non-persisted fields), so this is the only
 # wiring needed.
 MFE_CONFIG['EPP_ENABLE_CONFIRM_EMAIL'] = {{ INDIGO_ENABLE_CONFIRM_EMAIL }}
+{% if INDIGO_SITE_ID is not none %}
+# ACE transactional emails (activation) run in a request-less Celery worker, so they build
+# absolute URLs from Site.objects.get_current() == the Site at SITE_ID. Point it at the Site
+# whose domain is LMS_HOST so the activation email stops linking to 'example.com'.
+SITE_ID = {{ INDIGO_SITE_ID }}
+{% endif %}
 """,
         ),
         (
@@ -264,6 +278,12 @@ EPP_ENABLE_EMAIL_DOMAIN_CHECK = {{ INDIGO_ENABLE_EMAIL_DOMAIN_CHECK }}
 # to the MFE -- RegistrationFieldsContext drops non-persisted fields), so this is the only
 # wiring needed.
 MFE_CONFIG['EPP_ENABLE_CONFIRM_EMAIL'] = {{ INDIGO_ENABLE_CONFIRM_EMAIL }}
+{% if INDIGO_SITE_ID is not none %}
+# ACE transactional emails (activation) run in a request-less Celery worker, so they build
+# absolute URLs from Site.objects.get_current() == the Site at SITE_ID. Point it at the Site
+# whose domain is LMS_HOST so the activation email stops linking to 'example.com'.
+SITE_ID = {{ INDIGO_SITE_ID }}
+{% endif %}
 """,
         ),
     ]
