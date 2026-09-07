@@ -65,6 +65,17 @@ config: t.Dict[str, t.Dict[str, t.Any]] = {
         # what leaked "https://example.com/" links into the activation email). Set to null
         # to leave Tutor's default SITE_ID untouched.
         "SITE_ID": 3,
+        # Transactional email content. generate_activation_email_context reads both via
+        # configuration_helpers.get_value(KEY, settings.KEY), so a Django setting is enough
+        # -- no SiteConfiguration, no template override.
+        #  - ACTIVATION_EMAIL_SUPPORT_URL fills the activation email's "use our web form at
+        #    {support_url}" link (edx-platform defaults ACTIVATION_EMAIL_SUPPORT_LINK /
+        #    SUPPORT_SITE_LINK to "" and Tutor doesn't set them, so it renders blank).
+        #  - CONTACT_MAILING_ADDRESS is the ACE footer "Our mailing address is: {...}"
+        #    (Tutor hardcodes it to "{PLATFORM_NAME} - https://{LMS_HOST}").
+        # Empty string => the setting patch is skipped and the upstream default is used.
+        "ACTIVATION_EMAIL_SUPPORT_URL": "https://eppseguridadindustrial.com/contacto",
+        "CONTACT_MAILING_ADDRESS": "admin@udesst.com",
     },
     "unique": {},
     "overrides": {},
@@ -254,6 +265,14 @@ MFE_CONFIG['EPP_ENABLE_CONFIRM_EMAIL'] = {{ INDIGO_ENABLE_CONFIRM_EMAIL }}
 # whose domain is LMS_HOST so the activation email stops linking to 'example.com'.
 SITE_ID = {{ INDIGO_SITE_ID }}
 {% endif %}
+{% if INDIGO_ACTIVATION_EMAIL_SUPPORT_URL %}
+# Fills the activation email's "use our web form at {support_url}" link (blank by default).
+ACTIVATION_EMAIL_SUPPORT_LINK = "{{ INDIGO_ACTIVATION_EMAIL_SUPPORT_URL }}"
+{% endif %}
+{% if INDIGO_CONTACT_MAILING_ADDRESS %}
+# ACE email footer: "Our mailing address is: {contact_mailing_address}".
+CONTACT_MAILING_ADDRESS = "{{ INDIGO_CONTACT_MAILING_ADDRESS }}"
+{% endif %}
 """,
         ),
         (
@@ -283,6 +302,14 @@ MFE_CONFIG['EPP_ENABLE_CONFIRM_EMAIL'] = {{ INDIGO_ENABLE_CONFIRM_EMAIL }}
 # absolute URLs from Site.objects.get_current() == the Site at SITE_ID. Point it at the Site
 # whose domain is LMS_HOST so the activation email stops linking to 'example.com'.
 SITE_ID = {{ INDIGO_SITE_ID }}
+{% endif %}
+{% if INDIGO_ACTIVATION_EMAIL_SUPPORT_URL %}
+# Fills the activation email's "use our web form at {support_url}" link (blank by default).
+ACTIVATION_EMAIL_SUPPORT_LINK = "{{ INDIGO_ACTIVATION_EMAIL_SUPPORT_URL }}"
+{% endif %}
+{% if INDIGO_CONTACT_MAILING_ADDRESS %}
+# ACE email footer: "Our mailing address is: {contact_mailing_address}".
+CONTACT_MAILING_ADDRESS = "{{ INDIGO_CONTACT_MAILING_ADDRESS }}"
 {% endif %}
 """,
         ),
