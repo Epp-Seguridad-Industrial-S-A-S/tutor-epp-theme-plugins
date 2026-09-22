@@ -76,6 +76,15 @@ config: t.Dict[str, t.Dict[str, t.Any]] = {
         # Empty string => the setting patch is skipped and the upstream default is used.
         "ACTIVATION_EMAIL_SUPPORT_URL": "https://eppseguridadindustrial.com/contacto",
         "CONTACT_MAILING_ADDRESS": "admin@udesst.com",
+        # --- Wompi payment gateway (shoppingcart CC_PROCESSOR) ---
+        # From dashboard.wompi.co -> Desarrolladores. PUBLIC_KEY/INTEGRITY_SECRET come from
+        # "Llaves API"; EVENTS_SECRET is shown when configuring the Eventos webhook URL
+        # (Desarrolladores -> Eventos) -- that URL is <LMS root>/shoppingcart/wompi/webhook/.
+        #   tutor config save --set INDIGO_WOMPI_PUBLIC_KEY=... --set INDIGO_WOMPI_INTEGRITY_SECRET=... --set INDIGO_WOMPI_EVENTS_SECRET=...
+        "WOMPI_PUBLIC_KEY": "",
+        "WOMPI_INTEGRITY_SECRET": "",
+        "WOMPI_EVENTS_SECRET": "",
+        "WOMPI_CHECKOUT_URL": "https://checkout.wompi.co/p/",
     },
     "unique": {},
     "overrides": {},
@@ -311,6 +320,42 @@ ACTIVATION_EMAIL_SUPPORT_LINK = "{{ INDIGO_ACTIVATION_EMAIL_SUPPORT_URL }}"
 # ACE email footer: "Our mailing address is: {contact_mailing_address}".
 CONTACT_MAILING_ADDRESS = "{{ INDIGO_CONTACT_MAILING_ADDRESS }}"
 {% endif %}
+""",
+        ),
+    ]
+)
+
+
+# Wompi payment gateway settings for the shoppingcart djangoapp (see config["defaults"] above
+# for where these INDIGO_WOMPI_* values come from).
+hooks.Filters.ENV_PATCHES.add_items(
+    [
+        (
+            "openedx-lms-production-settings",
+            """
+CC_PROCESSOR_NAME = "Wompi"
+CC_PROCESSOR = {
+    "Wompi": {
+        "PUBLIC_KEY": "{{ INDIGO_WOMPI_PUBLIC_KEY }}",
+        "INTEGRITY_SECRET": "{{ INDIGO_WOMPI_INTEGRITY_SECRET }}",
+        "EVENTS_SECRET": "{{ INDIGO_WOMPI_EVENTS_SECRET }}",
+        "CHECKOUT_URL": "{{ INDIGO_WOMPI_CHECKOUT_URL }}",
+    }
+}
+""",
+        ),
+        (
+            "openedx-lms-development-settings",
+            """
+CC_PROCESSOR_NAME = "Wompi"
+CC_PROCESSOR = {
+    "Wompi": {
+        "PUBLIC_KEY": "{{ INDIGO_WOMPI_PUBLIC_KEY }}",
+        "INTEGRITY_SECRET": "{{ INDIGO_WOMPI_INTEGRITY_SECRET }}",
+        "EVENTS_SECRET": "{{ INDIGO_WOMPI_EVENTS_SECRET }}",
+        "CHECKOUT_URL": "{{ INDIGO_WOMPI_CHECKOUT_URL }}",
+    }
+}
 """,
         ),
     ]
