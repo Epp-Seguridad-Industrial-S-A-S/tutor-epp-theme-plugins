@@ -232,9 +232,18 @@ hooks.Filters.ENV_PATCHES.add_item(
 # tutorindigo/templates/indigo/tasks/init.sh, which is the Jinja-templated version Tutor
 # actually runs (see CLI_DO_INIT_TASKS above) -- epp-theme's own tasks/init.sh is a separate,
 # hardcoded-domain reference copy that is never executed.
+#
+# Hooked on "openedx-dockerfile-pre-assets", NOT "openedx-dockerfile-post-python-requirements":
+# the latter runs inside the throwaway `python-requirements` builder stage, whose filesystem is
+# discarded except for the one directory (`/openedx/venv`) the final `production` stage COPYs
+# --from= explicitly -- files written to /openedx/themes there never reach the running image.
+# "pre-assets" runs in the `production` stage itself, before both the built-in
+# `COPY ./themes/ /openedx/themes` (which only merges on top, so it won't clobber this) and
+# `collectstatic`/sass compilation -- so our theme lands in place in time to actually be built
+# and collected, not just present on disk.
 hooks.Filters.ENV_PATCHES.add_item(
     (
-        "openedx-dockerfile-post-python-requirements",
+        "openedx-dockerfile-pre-assets",
         """
 RUN git clone --depth 1 https://{% if INDIGO_EPP_THEME_GITHUB_TOKEN %}{{ INDIGO_EPP_THEME_GITHUB_TOKEN }}@{% endif %}github.com/Epp-Seguridad-Industrial-S-A-S/epp-theme.git /tmp/epp-theme \\
     && mkdir -p /openedx/themes/indigo \\
