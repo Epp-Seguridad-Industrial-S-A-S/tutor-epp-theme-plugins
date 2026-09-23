@@ -222,23 +222,30 @@ hooks.Filters.ENV_PATCHES.add_item(
     )
 )
 
-# Vendor ONLY epp-theme's lms/templates/shoppingcart/ into the "indigo" theme dir inside the
-# openedx image. tutorindigo/templates/indigo/ only ships tasks/init.sh (see git history:
-# commit f2c48c2 deleted the rest of the upstream tutor-indigo theme tree when branding moved
-# to the epp-brand npm package) -- without this, shoppingcart/*_form.html (a payment
-# processor's own checkout form, with no upstream edx-platform fallback) 500s with
-# TemplateDoesNotExist. Deliberately does NOT touch tutorindigo/templates/indigo/tasks/init.sh,
-# which is the Jinja-templated version Tutor actually runs (see CLI_DO_INIT_TASKS above) --
-# epp-theme's own tasks/init.sh is a separate, hardcoded-domain reference copy that is never
-# executed.
+# Vendor epp-theme's lms/ and cms/ (templates + static, including branding: logo, colors,
+# footer/header, etc.) into the "indigo" theme dir inside the openedx image.
+# tutorindigo/templates/indigo/ only ships tasks/init.sh (see git history: commit f2c48c2
+# deleted the rest of the upstream tutor-indigo theme tree when branding moved to the epp-brand
+# npm package) -- without this, nothing in epp-theme/lms/ or epp-theme/cms/ ever reaches the
+# running LMS/CMS (e.g. shoppingcart/*_form.html, a payment processor's own checkout form with
+# no upstream edx-platform fallback, 500s with TemplateDoesNotExist). Deliberately does NOT
+# touch tutorindigo/templates/indigo/tasks/init.sh, which is the Jinja-templated version Tutor
+# actually runs (see CLI_DO_INIT_TASKS above) -- epp-theme's own tasks/init.sh is a separate,
+# hardcoded-domain reference copy that is never executed.
 #
-# Deliberately narrow (shoppingcart/ only, not all of epp-theme's lms/+cms/): epp-theme's theme
-# was never actually loaded in production before this patch existed (same root cause as above),
-# so its other templates -- header.html, footer.html, index.html, etc. -- have never been
-# exercised against this edx-platform release and are NOT known-good. Vendoring the full tree
-# once surfaced a real bug (header.html's `reverse('session_language')` doesn't resolve on this
-# install, breaking the header on every single page, including the 500 error page itself, since
-# it's shared chrome). Widening this beyond shoppingcart/ needs its own testing pass first.
+# History: this was briefly narrowed to just lms/templates/shoppingcart/ after a production
+# incident where the header broke site-wide with `NoReverseMatch: session_language`. Root-caused
+# afterwards: that crash did NOT come from epp-theme -- epp-theme's real header.html has no
+# session_language reference at all (that code lives in navbar-authenticated.html/
+# navbar-not-authenticated.html and calls reverse('update_language'), which resolves fine on
+# this install -- verified via `manage.py lms shell -c "..."`, along with the other
+# epp-theme-specific imports it relies on: `six.text_type` and
+# `openedx.core.djangoapps.lang_pref.api`). The actual cause was host-side contamination: an
+# unrelated GitHub branch mixup briefly had the wrong (upstream/Edly) tutor-indigo package
+# installed, and `tutor config save` rendered *that* package's own bundled theme (which does
+# reference session_language) into ~/.local/share/tutor/env/build/openedx/themes/indigo/ on the
+# server -- a directory Tutor never cleans between renders. Once that stale host directory was
+# deleted and re-rendered from the correct package, the full epp-theme tree vendors cleanly.
 #
 # Hooked on "openedx-dockerfile-pre-assets", NOT "openedx-dockerfile-post-python-requirements":
 # the latter runs inside the throwaway `python-requirements` builder stage, whose filesystem is
@@ -253,8 +260,9 @@ hooks.Filters.ENV_PATCHES.add_item(
         "openedx-dockerfile-pre-assets",
         """
 RUN git clone --depth 1 https://{% if INDIGO_EPP_THEME_GITHUB_TOKEN %}{{ INDIGO_EPP_THEME_GITHUB_TOKEN }}@{% endif %}github.com/Epp-Seguridad-Industrial-S-A-S/epp-theme.git /tmp/epp-theme \\
-    && mkdir -p /openedx/themes/indigo/lms/templates/shoppingcart \\
-    && cp -rT /tmp/epp-theme/lms/templates/shoppingcart /openedx/themes/indigo/lms/templates/shoppingcart \\
+    && mkdir -p /openedx/themes/indigo \\
+    && cp -rT /tmp/epp-theme/lms /openedx/themes/indigo/lms \\
+    && cp -rT /tmp/epp-theme/cms /openedx/themes/indigo/cms \\
     && rm -rf /tmp/epp-theme
 """,
     )
