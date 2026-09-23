@@ -85,6 +85,13 @@ config: t.Dict[str, t.Dict[str, t.Any]] = {
         "WOMPI_INTEGRITY_SECRET": "",
         "WOMPI_EVENTS_SECRET": "",
         "WOMPI_CHECKOUT_URL": "https://checkout.wompi.co/p/",
+        # GitHub personal access token with read access to the private epp-theme repo
+        # (Epp-Seguridad-Industrial-S-A-S/epp-theme), used only at image-build time to
+        # `git clone` it over HTTPS -- anonymous clone fails with "could not read
+        # Username for 'https://github.com'" since the repo isn't public.
+        #   tutor config save --set INDIGO_EPP_THEME_GITHUB_TOKEN=ghp_...
+        # Leave blank if/when epp-theme is made public.
+        "EPP_THEME_GITHUB_TOKEN": "",
     },
     "unique": {},
     "overrides": {},
@@ -229,7 +236,7 @@ hooks.Filters.ENV_PATCHES.add_item(
     (
         "openedx-dockerfile-post-python-requirements",
         """
-RUN git clone --depth 1 https://github.com/Epp-Seguridad-Industrial-S-A-S/epp-theme.git /tmp/epp-theme \\
+RUN git clone --depth 1 https://{% if INDIGO_EPP_THEME_GITHUB_TOKEN %}{{ INDIGO_EPP_THEME_GITHUB_TOKEN }}@{% endif %}github.com/Epp-Seguridad-Industrial-S-A-S/epp-theme.git /tmp/epp-theme \\
     && mkdir -p /openedx/themes/indigo \\
     && cp -rT /tmp/epp-theme/lms /openedx/themes/indigo/lms \\
     && cp -rT /tmp/epp-theme/cms /openedx/themes/indigo/cms \\
